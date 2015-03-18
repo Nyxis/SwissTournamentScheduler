@@ -1,0 +1,21 @@
+Sts\Bundle\AppBundle\Entity\Player:
+    type: entity
+    repositoryClass: Sts\Bundle\AppBundle\Repository\PlayerRepository
+    table: sts_player
+    id:
+        id:
+            type: integer
+            generator: { strategy: AUTO }
+    fields:
+        name:
+            type: string
+
+    oneToMany:
+        playerMatches:
+            targetEntity: PlayerMatch
+            mappedBy: player
+            cascade: ['persist', 'remove']
+        playerRankings:
+            targetEntity: PlayerRanking
+            mappedBy: player
+            cascade: ['persist', 'remove']

@@ -1,0 +1,23 @@
+Sts\Bundle\AppBundle\Entity\Ranking:
+    type: entity
+    repositoryClass: Sts\Bundle\AppBundle\Repository\RankingRepository
+    table: sts_ranking
+    id:
+        id:
+            type: integer
+            generator: { strategy: AUTO }
+
+    oneToMany:
+        playerRankings:
+            targetEntity: PlayerRanking
+            mappedBy: ranking
+            cascade: ['persist', 'remove']
+
+    oneToOne:
+        round:
+            targetEntity: Round
+            inversedBy: ranking
+            joinColumn:
+                name: round_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']

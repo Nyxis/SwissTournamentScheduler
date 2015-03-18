@@ -1,0 +1,23 @@
+Sts\Bundle\AppBundle\Entity\Match:
+    type: entity
+    repositoryClass: Sts\Bundle\AppBundle\Repository\MatchRepository
+    table: sts_match
+    id:
+        id:
+            type: integer
+            generator: { strategy: AUTO }
+
+    oneToMany:
+        playerMatches:
+            targetEntity: PlayerMatch
+            mappedBy: match
+            cascade: ['persist', 'remove']
+
+    manyToOne:
+        round:
+            targetEntity: Round
+            inversedBy: matches
+            joinColumn:
+                name: round_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']

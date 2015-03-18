@@ -1,0 +1,36 @@
+Sts\Bundle\AppBundle\Entity\PlayerMatch:
+    type: entity
+    repositoryClass: Sts\Bundle\AppBundle\Repository\PlayerMatchRepository
+    table: sts_player_match
+    id:
+        id:
+            type: integer
+            generator: { strategy: AUTO }
+    fields:
+        score:
+            type: integer
+            nullable: true
+
+    oneToOne:
+        playerRanking:
+            targetEntity: PlayerRanking
+            joinColumn:
+                name: player_ranking_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']
+
+    manyToOne:
+        match:
+            targetEntity: Match
+            inversedBy: playerMatches
+            joinColumn:
+                name: match_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']
+        player:
+            targetEntity: Player
+            inversedBy: playerMatches
+            joinColumn:
+                name: player_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']

@@ -1,0 +1,32 @@
+Sts\Bundle\AppBundle\Entity\PlayerRanking:
+    type: entity
+    repositoryClass: Sts\Bundle\AppBundle\Repository\PlayerRankingRepository
+    table: sts_player_ranking
+    id:
+        id:
+            type: integer
+            generator: { strategy: AUTO }
+
+    fields:
+        rank:
+            type: integer
+        score:
+            type: integer
+        average:
+            type: integer
+
+    manyToOne:
+        ranking:
+            targetEntity: Ranking
+            inversedBy: playerRankings
+            joinColumn:
+                name: ranking_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']
+        player:
+            targetEntity: Player
+            inversedBy: playerRankings
+            joinColumn:
+                name: player_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']

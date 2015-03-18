@@ -1,0 +1,3 @@
+sts_app:
+    resource: "@StsAppBundle/Resources/config/routing.yml"
+    prefix:   /

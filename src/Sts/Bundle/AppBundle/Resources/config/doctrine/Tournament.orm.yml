@@ -1,0 +1,39 @@
+Sts\Bundle\AppBundle\Entity\Tournament:
+    type: entity
+    repositoryClass: Sts\Bundle\AppBundle\Repository\TournamentRepository
+    table: sts_tournament
+    id:
+        id:
+            type: integer
+            generator: { strategy: AUTO }
+    fields:
+        name:
+            type: string
+
+    oneToOne:
+        currentRound:
+            targetEntity: Round
+            joinColumn:
+                name: current_round_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']
+        initialRanking:
+            targetEntity: Ranking
+            nullable: true
+            joinColumn:
+                name: initial_ranking_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']
+        finalRanking:
+            targetEntity: Ranking
+            nullable: true
+            joinColumn:
+                name: final_ranking_id
+                referencedColumnName: id
+            cascade: ['persist', 'remove']
+
+    oneToMany:
+        rounds:
+            targetEntity: Round
+            mappedBy: tournament
+            cascade: ['persist', 'remove']
