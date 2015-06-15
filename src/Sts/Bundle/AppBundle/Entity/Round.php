@@ -196,8 +196,7 @@ class Round
             $playerRelevanceMap[$playerName] = $relevanceData;
         }
 
-        $roundMatches     = array();
-        $opposition       = array();
+        $pairs            = array();
         $availablePlayers = array_keys($playerRelevanceMap);
         $availablePlayers = array_combine($availablePlayers, $availablePlayers);
 
@@ -206,8 +205,8 @@ class Round
 
             foreach ($playerRelevanceMap[$playerName] as $possibleOpponent => $relevance) {
                 if (isset($availablePlayers[$possibleOpponent])) {
-                    $opponentName            = $possibleOpponent;
-                    $opposition[$playerName] = $opponentName;
+                    $opponentName       = $possibleOpponent;
+                    $pairs[$playerName] = $opponentName;
                     unset($availablePlayers[$opponentName]);
 
                     break;
@@ -215,10 +214,19 @@ class Round
             }
 
             if (empty($opponentName)) {
-                throw new RuntimeException('Calculation limit reached !');
+                throw new \RuntimeException('Calculation limit reached !');
             }
+            unset($opponentName);
+
+        } while (!empty($availablePlayers));
+
+        foreach ($pairs as $playerName => $opponentName) {
 
             $match = new Match();
+
+            $playerIsBye   = $playerName == Player::BYE_NAME;
+            $opponentIsBye = $opponentName == Player::BYE_NAME;
+            $isBye         = $playerIsBye || $opponentIsBye;
 
             $playerMatch = new PlayerMatch();
             $playerMatch->setMatch($match);
@@ -226,6 +234,10 @@ class Round
             $playerMatch->setPlayer($players[$playerName]->getPlayer());
             $match->addPlayerMatch($playerMatch);
             $players[$playerName]->getPlayer()->addPlayerMatch($playerMatch);
+            if ($isBye) {
+                $playerMatch->setScore($playerIsBye ? 0 : 2);
+                $playerMatch->setWins(!$playerIsBye);
+            }
 
             $playerMatch = new PlayerMatch();
             $playerMatch->setMatch($match);
@@ -233,13 +245,13 @@ class Round
             $playerMatch->setPlayer($players[$opponentName]->getPlayer());
             $match->addPlayerMatch($playerMatch);
             $players[$opponentName]->getPlayer()->addPlayerMatch($playerMatch);
+            if ($isBye) {
+                $playerMatch->setScore($opponentIsBye ? 0 : 2);
+                $playerMatch->setWins(!$opponentIsBye);
+            }
 
-            unset($opponentName);
-            $roundMatches[] = $match;
+            $match->setFinished($isBye);
 
-        } while (!empty($availablePlayers));
-
-        foreach ($roundMatches as $match) {
             $match->setRound($this);
             $this->addMatch($match);
         }

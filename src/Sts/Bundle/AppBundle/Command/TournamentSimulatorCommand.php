@@ -24,6 +24,7 @@ class TournamentSimulatorCommand extends ContainerAwareCommand
             ->setDescription('Sts tournament simulation command')
             ->addArgument('name', InputArgument::REQUIRED, 'Tournament name')
             ->addArgument('nb_rounds', InputArgument::REQUIRED, 'Number of rounds')
+            ->addArgument('player_names', InputArgument::REQUIRED, 'Player name separe by commas')
          ;
     }
 
@@ -32,6 +33,7 @@ class TournamentSimulatorCommand extends ContainerAwareCommand
         $container = $this->getContainer();
         $em        = $container->get('doctrine')->getManager();
         $dialog    = $this->getHelperSet()->get('dialog');
+        $players   = explode(',', $input->getArgument('player_names'));
 
         $tournament = new Tournament();
         $tournament->setName(
@@ -39,15 +41,9 @@ class TournamentSimulatorCommand extends ContainerAwareCommand
         );
         $tournament->prepare(
             $input->getArgument('nb_rounds'),
-            array(
-                (new Player)->setName('elspeth'),
-                (new Player)->setName('ajani'),
-                (new Player)->setName('kiora'),
-                (new Player)->setName('ugin'),
-                (new Player)->setName('chandra'),
-                (new Player)->setName('jace'),
-                (new Player)->setName('liliana'),
-            )
+            array_map(function($player) {
+                return (new Player)->setName($player);
+            }, $players)
         );
 
         $em->persist($tournament);
@@ -64,23 +60,59 @@ class TournamentSimulatorCommand extends ContainerAwareCommand
 
             // initialize
             $round->prepare();
-            $this->logRound($round, $output);
 
             $em->persist($round);
             $em->flush();
 
-            // $output->writeln('');
-            // $dialog->askConfirmation(
-            //     $output,
-            //     sprintf('<question>Play round %s ?</question>', $round->getNumber()),
-            //     false
-            // );
-            // $output->writeln('');
+            // get unfinished matchs
+            $matchs = $round->getMatches()->filter(function(Match $match) {
+                return !$match->getFinished();
+            });
+            $unfinishedMatchs = $matchs;
 
+            while(true) {
+                $this->logRound($round, $output);
 
-            // fake matches
-            $this->fakeRound($round);
-            $this->logRound($round, $output);
+                $output->writeln('');
+                list($playerName, $score) = $dialog->askAndValidate(
+                    $output,
+                    'Please enter a <info>player score</info> (ex : <comment>name score</comment>) : ',
+                    function ($answer) {
+                        if (!($answer == 'end_round'
+                            || preg_match('/^ *[a-zA-Z0-9]+ *[0-9]? *$/', $answer))
+                        ) {
+                            throw new \RunTimeException(
+                                'Please follow pattern or enter "end_round" to end current round.'
+                            );
+                        }
+
+                        return array_replace(
+                            array(null, null),
+                            explode(' ', trim($answer))
+                        );
+                    }
+                );
+
+                if ($playerName == 'end_round' && $unfinishedMatchs->isEmpty()) {
+                    break;
+                }
+
+                foreach ($matchs as $index => $match) {
+                    $scored = 0;
+                    foreach ($match->getPlayerMatches() as $playerMatch) {
+                        if ($playerMatch->getPlayer()->getName() == $playerName) {
+                            $playerMatch->setScore($score);
+                        }
+                        if (null !==$playerMatch->getScore()) {
+                            $scored++;
+                        }
+                    }
+                    if ($scored == $match->getPlayerMatches()->count()) {
+                        $match->setFinished(true);
+                        unset($unfinishedMatchs[$index]);
+                    }
+                }
+            }
 
             // close
             $round->close();
@@ -105,12 +137,6 @@ class TournamentSimulatorCommand extends ContainerAwareCommand
             $playerMatchs = $match->getPlayerMatches();
             foreach ($playerMatchs as $playerResultIndex => $playerMatch) {
                 $opponentResultIndex = $playerResultIndex ? 0 : 1;
-                if ($playerMatch->getPlayer()->getName() == Player::BYE_NAME) {
-                    $playerMatch->setScore(0);
-                    $playerMatchs[$opponentResultIndex]->setScore(2);
-                    break;
-                }
-
                 $playerMatch->setScore(rand(
                     0,
                     $playerMatchs[$opponentResultIndex]->getScore() == 2 ? 1 : 2
@@ -123,6 +149,7 @@ class TournamentSimulatorCommand extends ContainerAwareCommand
 
     private function logRanking(Ranking $ranking, Tournament $tournament, OutputInterface $output)
     {
+        $output->writeln('');
         switch (true) {
             case $ranking === $tournament->getInitialRanking() :
                 $output->writeln('<info>Initial ranking</info> :');
@@ -169,12 +196,11 @@ class TournamentSimulatorCommand extends ContainerAwareCommand
                 $name, $nameOff ? str_repeat(' ', $nameOff) : ''
             ));
         }
-
-        $output->writeln('');
     }
 
     private function logRound(Round $round, OutputInterface $output)
     {
+        $output->writeln('');
         $output->writeln(sprintf('<info>Round %s</info> :', $round->getNumber()));
 
         $log          = array();
@@ -215,7 +241,7 @@ class TournamentSimulatorCommand extends ContainerAwareCommand
                 $playerScoreOff ? str_repeat(' ', $playerScoreOff) : '', $playerRankScore,
                 $playerRankAvg, $playerAverageOff ? str_repeat(' ', $playerAverageOff) : '',
                 $playerOff ? str_repeat(' ', $playerOff) : '', $player,
-                $playerScore ?: '0', $opponentScore ?: '0',
+                $playerScore !== null ? $playerScore : '*', $opponentScore !== null ? $opponentScore : '*',
                 $opponent, $opponentOff ? str_repeat(' ', $opponentOff) : '',
                 $opponentScoreOff ? str_repeat(' ', $opponentScoreOff) : '', $opponentRankScore,
                 $opponentRankAvg, $opponentAverageOff ? str_repeat(' ', $opponentAverageOff) : '',
@@ -224,7 +250,5 @@ class TournamentSimulatorCommand extends ContainerAwareCommand
                 $finished ? 'green' : 'red'
             ));
         }
-
-        $output->writeln('');
     }
 }
